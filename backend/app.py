@@ -3,8 +3,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, date, timedelta
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import pg8000.native
 
 app = Flask(__name__)
 CORS(app)
@@ -13,7 +12,16 @@ CORS(app)
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
 def get_conn():
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    import urllib.parse
+    url = urllib.parse.urlparse(DATABASE_URL)
+    return pg8000.native.Connection(
+        host=url.hostname,
+        port=url.port or 5432,
+        database=url.path[1:],
+        user=url.username,
+        password=url.password,
+        ssl_context=True
+    )
 
 def init_db():
     """앱 시작 시 테이블 없으면 자동 생성"""
