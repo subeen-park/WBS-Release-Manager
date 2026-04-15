@@ -1,3 +1,7 @@
+// 앱 시작 시 Render 서버 워밍업
+fetch(BASE.replace('/api', '/api/health')).catch(() => {})
+
+
 const BASE = 'http://localhost:5000/api'
 
 async function http(method, path, body) {
