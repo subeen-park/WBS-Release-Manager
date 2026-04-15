@@ -2,7 +2,7 @@
 fetch(BASE.replace('/api', '/api/health')).catch(() => {})
 
 
-const BASE = 'http://localhost:5000/api'
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 async function http(method, path, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } }
