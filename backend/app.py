@@ -13,55 +13,43 @@ CORS(app)
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
 def get_conn():
-    if not DATABASE_URL:
-        raise Exception("DATABASE_URL 환경변수가 설정되지 않았습니다")
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    url = DATABASE_URL
+    if not url:
+        raise Exception("DATABASE_URL이 없습니다")
+    # Render는 postgres:// 로 주는데 psycopg2는 postgresql:// 필요
+    if url.startswith('postgres://'):
+        url = url.replace('postgres://', 'postgresql://', 1)
+    return psycopg2.connect(url, cursor_factory=RealDictCursor)
 
 def init_db():
-    """앱 시작 시 테이블 없으면 자동 생성"""
-    with get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS projects (
-                    id          TEXT PRIMARY KEY,
-                    name        TEXT NOT NULL,
-                    description TEXT DEFAULT '',
-                    pm          TEXT DEFAULT '',
-                    end_date    TEXT DEFAULT '',
-                    created_at  TEXT DEFAULT ''
-                );
-
-                CREATE TABLE IF NOT EXISTS tasks (
-                    id          TEXT PRIMARY KEY,
-                    project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-                    grp         TEXT DEFAULT '',
-                    task        TEXT NOT NULL,
-                    assignee    TEXT DEFAULT '',
-                    start_date  TEXT DEFAULT '',
-                    end_date    TEXT DEFAULT '',
-                    progress    INTEGER DEFAULT 0,
-                    note        TEXT DEFAULT '',
-                    jira        TEXT DEFAULT '',
-                    created_at  TEXT DEFAULT ''
-                );
-
-                CREATE TABLE IF NOT EXISTS webhook (
-                    id      SERIAL PRIMARY KEY,
-                    type    TEXT DEFAULT '',
-                    token   TEXT DEFAULT '',
-                    chat    TEXT DEFAULT '',
-                    url     TEXT DEFAULT ''
-                );
-
-                CREATE TABLE IF NOT EXISTS logs (
-                    id         SERIAL PRIMARY KEY,
-                    log_type   TEXT DEFAULT '',
-                    title      TEXT DEFAULT '',
-                    detail     TEXT DEFAULT '',
-                    created_at TEXT DEFAULT ''
-                );
-            """)
-        conn.commit()
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL,
+            description TEXT DEFAULT '', pm TEXT DEFAULT '',
+            end_date TEXT DEFAULT '', created_at TEXT DEFAULT ''
+        );
+        CREATE TABLE IF NOT EXISTS tasks (
+            id TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            grp TEXT DEFAULT '', task TEXT NOT NULL,
+            assignee TEXT DEFAULT '', start_date TEXT DEFAULT '',
+            end_date TEXT DEFAULT '', progress INTEGER DEFAULT 0,
+            note TEXT DEFAULT '', jira TEXT DEFAULT '', created_at TEXT DEFAULT ''
+        );
+        CREATE TABLE IF NOT EXISTS webhook (
+            id SERIAL PRIMARY KEY, type TEXT DEFAULT '',
+            token TEXT DEFAULT '', chat TEXT DEFAULT '', url TEXT DEFAULT ''
+        );
+        CREATE TABLE IF NOT EXISTS logs (
+            id SERIAL PRIMARY KEY, log_type TEXT DEFAULT '',
+            title TEXT DEFAULT '', detail TEXT DEFAULT '', created_at TEXT DEFAULT ''
+        );
+    """)
+    conn.commit()
+    cur.close()
+    conn.close()
 
 # ── helpers ──────────────────────────────────────────────
 def row_to_project(row):
